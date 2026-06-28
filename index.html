@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<meta name="description" content="Interactive RD-Aug research dashboard for reaction-diffusion-inspired synthetic augmentation in potato blight classification." />
+<title>RD-Aug · Interactive Research Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#f7f8f5; --surface:#ffffff; --surface2:#f1f3ee; --surface3:#e8ece4;
+  --border:#d9ded3; --border2:#c8d0c0;
+  --text:#171a16; --muted:#61685f; --hint:#929a8e;
+  --green:#2e7d32; --green-l:#e8f5e9; --green-b:#4caf50;
+  --blue:#1565c0; --blue-l:#e3f2fd; --blue-b:#2196f3;
+  --amber:#e65100; --amber-l:#fff3e0; --amber-b:#ff9800;
+  --purple:#4527a0; --purple-l:#ede7f6; --purple-b:#7c4dff;
+  --red:#b71c1c; --red-l:#ffebee; --red-b:#f44336;
+  --teal:#00695c; --teal-l:#e0f2f1; --teal-b:#009688;
+  --ink:#111827; --shadow:0 14px 38px rgba(20,30,20,.08);
+  --radius:14px; --radius-sm:9px; --gap:20px;
+}
+[data-theme="dark"]{
+  --bg:#101411; --surface:#171d18; --surface2:#202820; --surface3:#2a342b;
+  --border:#344035; --border2:#455247;
+  --text:#eef5ee; --muted:#b5c0b5; --hint:#8b958c;
+  --green-l:#16351b; --blue-l:#12293e; --amber-l:#3b2712; --purple-l:#241b3d; --red-l:#3a1717; --teal-l:#143231;
+  --shadow:0 14px 38px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:Inter,'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.65}
+a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+button,input,select{font:inherit}
+mark{background:var(--amber-l);color:var(--amber);border-radius:4px;padding:0 3px}
+
+/* Layout */
+.topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.topbar-inner{max-width:1260px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:.65rem 1.2rem}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--green),var(--blue));display:inline-grid;place-items:center;color:#fff;font-size:15px;box-shadow:0 6px 16px rgba(21,101,192,.25)}
+.nav{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{font-size:12px;font-weight:700;color:var(--muted);padding:.35rem .58rem;border-radius:999px;white-space:nowrap;text-decoration:none}
+.nav a:hover,.nav a.active{background:var(--surface2);color:var(--text)}
+.actions{display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:.42rem .72rem;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s ease;white-space:nowrap}
+.btn:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(0,0,0,.08);text-decoration:none}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.progress{height:3px;background:linear-gradient(90deg,var(--green),var(--blue),var(--purple));width:0%}
+.page{max-width:1260px;margin:0 auto;padding:2rem 1.25rem 4rem}
+
+/* Hero */
+.hero{position:relative;overflow:hidden;border:1px solid var(--border);background:radial-gradient(circle at 10% 15%,var(--green-l),transparent 28%),radial-gradient(circle at 90% 20%,var(--blue-l),transparent 28%),var(--surface);border-radius:24px;padding:2.3rem 2rem;margin:1rem 0 2rem;box-shadow:var(--shadow)}
+.hero-grid{display:grid;grid-template-columns:1.35fr .85fr;gap:24px;align-items:center}
+.eyebrow{font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.6rem}
+.hero h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.06;letter-spacing:-.06em;margin-bottom:.7rem;max-width:820px}
+.hero .sub{font-size:1.05rem;color:var(--muted);max-width:780px;margin-bottom:1rem}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:750;padding:5px 11px;border-radius:20px;border:1px solid transparent}
+.pill.green{background:var(--green-l);color:var(--green);border-color:color-mix(in srgb,var(--green) 25%,transparent)}
+.pill.blue{background:var(--blue-l);color:var(--blue);border-color:color-mix(in srgb,var(--blue) 25%,transparent)}
+.pill.amber{background:var(--amber-l);color:var(--amber);border-color:color-mix(in srgb,var(--amber) 25%,transparent)}
+.pill.purple{background:var(--purple-l);color:var(--purple);border-color:color-mix(in srgb,var(--purple) 25%,transparent)}
+.pill.red{background:var(--red-l);color:var(--red);border-color:color-mix(in srgb,var(--red) 25%,transparent)}
+.hero-side{background:color-mix(in srgb,var(--surface) 70%,transparent);border:1px solid var(--border);border-radius:18px;padding:1rem;box-shadow:0 10px 24px rgba(0,0,0,.04)}
+.hero-side h3{font-size:14px;margin-bottom:.55rem}
+.hero-side p{font-size:12.5px;color:var(--muted);margin-bottom:.75rem}
+.mini-list{display:grid;gap:8px}
+.mini-item{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--muted)}
+.mini-icon{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 22px;font-size:12px;background:var(--green-l);color:var(--green);font-weight:900}
+
+/* Sections */
+.sec{scroll-margin-top:92px;margin-top:2.4rem}
+.sec-label{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--hint);margin-bottom:.45rem}
+.sec-title{font-size:1.45rem;font-weight:800;color:var(--text);margin-bottom:.25rem;letter-spacing:-.03em}
+.sec-sub{font-size:13.5px;color:var(--muted);margin-bottom:1rem;max-width:900px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:.75rem}
+
+/* Cards / grids */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;box-shadow:0 8px 22px rgba(0,0,0,.035)}
+.card-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:.15rem}
+.card-sub{font-size:12.5px;color:var(--muted);margin-bottom:.85rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* Guide cards */
+.guide-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.guide-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;position:relative;overflow:hidden}
+.guide-num{width:32px;height:32px;border-radius:10px;background:var(--blue-l);color:var(--blue);font-weight:900;display:grid;place-items:center;margin-bottom:.6rem}
+.guide-card h3{font-size:14px;margin-bottom:.25rem}.guide-card p{font-size:12.5px;color:var(--muted)}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:1rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.05rem;position:relative;overflow:hidden;transition:.15s ease;box-shadow:0 8px 20px rgba(0,0,0,.03)}
+.kpi:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:var(--shadow)}
+.kpi-label{font-size:11px;color:var(--muted);margin-bottom:.3rem;font-weight:800;text-transform:uppercase;letter-spacing:.055em}
+.kpi-val{font-size:2rem;font-weight:900;color:var(--text);letter-spacing:-.05em;line-height:1}
+.kpi-delta{font-size:12px;margin-top:.35rem}.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--muted)}
+.kpi .help{position:absolute;right:10px;top:9px;width:20px;height:20px;border-radius:50%;background:var(--surface2);color:var(--muted);display:grid;place-items:center;font-size:11px;font-weight:900;cursor:help}
+.tooltip{position:relative}.tooltip:hover::after{content:attr(data-tip);position:absolute;right:0;top:28px;width:240px;background:var(--ink);color:#fff;border-radius:9px;padding:.65rem .75rem;font-size:11.5px;line-height:1.4;z-index:10;box-shadow:var(--shadow)}
+
+/* Tabs */
+.tab-bar{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:1rem;overflow-x:auto}
+.tab-btn{font-size:13px;font-weight:800;padding:.55rem .9rem;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;border-radius:9px 9px 0 0;transition:all .15s;white-space:nowrap}
+.tab-btn.active{color:var(--blue);background:var(--blue-l);border-bottom-color:var(--blue)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Charts */
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:.7rem;font-size:12px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}.lsq{width:11px;height:11px;border-radius:3px;flex-shrink:0;display:inline-block}
+.ch-wrap{position:relative;width:100%;height:300px}
+
+/* Tables */
+.table-scroll{width:100%;overflow-x:auto;border-radius:var(--radius-sm)}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;color:var(--muted);font-weight:900;text-align:left;padding:.55rem .7rem;border-bottom:2px solid var(--border);background:var(--surface2);white-space:nowrap;text-transform:uppercase;letter-spacing:.035em}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--border);vertical-align:middle;font-size:12.5px}tr:hover td{background:var(--surface2)}td.mono,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}td.num{text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:800}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;padding:3px 7px;border-radius:999px;white-space:nowrap}
+.badge.ok{background:var(--green-l);color:var(--green)}.badge.warn{background:var(--amber-l);color:var(--amber)}.badge.info{background:var(--blue-l);color:var(--blue)}.badge.prop{background:var(--green);color:#fff}.badge.no{background:var(--surface2);color:var(--muted)}
+.cond-badge{display:inline-flex;font-size:11px;font-weight:900;padding:3px 8px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--blue-l);color:var(--blue)}
+.cond-badge.prop{background:var(--green);color:#fff}
+.search-row{display:flex;gap:10px;margin-bottom:.85rem;align-items:center;flex-wrap:wrap}.search{border:1px solid var(--border);border-radius:999px;padding:.55rem .85rem;background:var(--surface);color:var(--text);min-width:260px;outline:none}.search:focus{border-color:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 14%,transparent)}
+
+/* PDE */
+.eq-box{background:var(--surface2);border-left:4px solid var(--blue-b);border-radius:0 10px 10px 0;padding:.75rem 1rem;margin-bottom:1rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:var(--text);overflow-x:auto}
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:.75rem}.slider-row label{font-size:12px;color:var(--muted);width:120px;flex-shrink:0;font-weight:800}.slider-row input[type=range]{flex:1;accent-color:var(--blue);height:4px}.slider-row .val{font-size:13px;font-weight:900;color:var(--text);min-width:54px;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.pde-frames{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:.85rem}.pde-frame{background:var(--surface2);border-radius:9px;padding:6px}.pde-frame canvas{width:100%;aspect-ratio:1;display:block;border-radius:7px;image-rendering:pixelated}.pde-frame-label{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;font-weight:700}.stat-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:.9rem}.stat-item{background:var(--surface2);border-radius:9px;padding:.6rem .8rem}.stat-name{font-size:10px;color:var(--hint);font-weight:900;text-transform:uppercase;letter-spacing:.05em}.stat-v{font-size:14px;font-weight:900;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* Method and diagram */
+#blockDiag{width:100%;display:block;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+.method-steps{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;margin-top:.8rem}.step-chip{border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:.65rem;text-align:center;font-size:11.5px;color:var(--muted)}.step-chip b{display:block;color:var(--text);font-size:12.5px;margin-bottom:.15rem}
+
+/* Claims */
+.claim-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.claim{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem}.claim h3{font-size:12.5px;margin-bottom:.35rem}.claim p{font-size:11.8px;color:var(--muted)}
+
+/* Progress bars */
+.pbar-wrap{margin-bottom:.65rem}.pbar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:.25rem}.pbar-label .name{color:var(--muted);font-weight:800}.pbar-label .num{font-weight:900;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.pbar{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.pbar-fill{height:100%;border-radius:999px;transition:width .6s ease;background:var(--blue)}
+
+/* Stat boxes / params */
+.stat-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:.85rem}.stat-box{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--blue-b);border-radius:var(--radius);padding:.75rem .9rem}.stat-box.green{border-left-color:var(--green-b)}.stat-box.amber{border-left-color:var(--amber-b)}.stat-box-label{font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.05em}.stat-box-val{font-size:15px;font-weight:900;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-top:.15rem}.stat-box-note{font-size:10.5px;color:var(--hint);margin-top:.1rem}.params-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:1rem}.param-cell{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.7rem .9rem}.param-key{font-size:10px;color:var(--hint);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.param-sym{font-size:15px;font-weight:900;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--blue)}.param-val{font-size:13px;font-weight:800;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.param-desc{font-size:10.5px;color:var(--muted)}
+
+/* Code */
+.code-toggle{font-size:12.5px;color:var(--blue);cursor:pointer;user-select:none;margin-bottom:.5rem;display:flex;align-items:center;gap:6px;font-weight:800}.code-toggle::before{content:'▶';font-size:10px;transition:transform .2s}.code-toggle.open::before{transform:rotate(90deg)}.code-block{display:none;background:#1e1e2e;color:#cdd6f4;border-radius:10px;padding:1rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.7;overflow:auto;margin-bottom:1rem;max-height:420px;border:1px solid #30304a}.code-block.show{display:block}.kw{color:#cba6f7}.fn{color:#89b4fa}.str{color:#a6e3a1}.cm{color:#6c7086;font-style:italic}.numc{color:#fab387}
+
+/* Manuscript snippets */
+.snippet{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}.snippet pre{white-space:pre-wrap;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1.6;color:var(--text);background:var(--surface2);padding:1rem;border-radius:10px}.copy-row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:.6rem}
+
+.footer{text-align:center;font-size:12px;color:var(--hint);padding-top:2rem;border-top:1px solid var(--border);margin-top:2rem}.backtop{position:fixed;right:18px;bottom:18px;z-index:60;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:var(--text);font-weight:900}
+
+/* Print and responsive */
+@media print{.topbar,.actions,.backtop,.btn,.code-toggle{display:none!important}.page{max-width:none;padding:0}.card,.hero{box-shadow:none;break-inside:avoid}body{background:white}.sec{break-inside:avoid}}
+@media (max-width:980px){.hero-grid,.grid2,.grid3,.grid4,.guide-grid,.claim-grid,.stat-boxes{grid-template-columns:1fr}.method-steps{grid-template-columns:repeat(2,1fr)}.hero{padding:1.4rem}.nav{display:none}.topbar-inner{padding:.55rem .9rem}.stat-mini{grid-template-columns:1fr 1fr}.pde-frames{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:640px){body{font-size:14px}.page{padding:1rem .85rem 3rem}.hero h1{font-size:2rem}.kpi-grid{grid-template-columns:1fr 1fr}.pde-frames{grid-template-columns:repeat(2,1fr)}.stat-mini{grid-template-columns:1fr}.method-steps{grid-template-columns:1fr}.actions .btn span{display:none}.hero-side{display:none}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="logo">RD</span><span>RD-Aug Dashboard</span></div>
+    <nav class="nav" aria-label="Dashboard navigation">
+      <a href="#guide">Guide</a><a href="#results">Results</a><a href="#pipeline">Pipeline</a><a href="#ablation">Ablation</a><a href="#pde">PDE</a><a href="#validation">Validation</a><a href="#stats">Stats</a><a href="#code">Code</a>
+    </nav>
+    <div class="actions">
+      <button class="btn" onclick="toggleTheme()" title="Toggle light/dark theme">◐ <span>Theme</span></button>
+      <button class="btn" onclick="window.print()" title="Print or save as PDF">⎙ <span>Print</span></button>
+      <button class="btn primary" onclick="downloadDashboard()" title="Download this HTML file">⇩ <span>HTML</span></button>
+    </div>
+  </div>
+  <div class="progress" id="scrollProgress"></div>
+</div>
+
+<div class="page">
+  <header class="hero" id="top">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Interactive research companion</div>
+        <h1>RD-Aug: Physics-inspired synthetic augmentation for potato blight stage classification</h1>
+        <p class="sub">A user-friendly, reviewer-facing dashboard summarizing the method, data, ablations, Fisher–KPP simulation, calibration, statistics, and reproducible code fragments.</p>
+        <div class="pill-row">
+          <span class="pill green">✓ Architecture-agnostic</span>
+          <span class="pill blue">PlantVillage · 2,152 images</span>
+          <span class="pill blue">Field-IN · 1,200 images</span>
+          <span class="pill amber">10-fold CV · seed 42</span>
+          <span class="pill purple">ViT-B/16 · ResNet-50</span>
+          <span class="pill red">No PDE loss terms</span>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <h3>How to use this dashboard</h3>
+        <p>Start with the guide, inspect the pipeline, compare ablations, adjust PDE parameters, and copy manuscript-ready text snippets.</p>
+        <div class="mini-list">
+          <div class="mini-item"><span class="mini-icon">1</span><span><b>For reviewers:</b> KPIs, ablations, statistical tests, limitations.</span></div>
+          <div class="mini-item"><span class="mini-icon">2</span><span><b>For readers:</b> plain-language explanations under each technical block.</span></div>
+          <div class="mini-item"><span class="mini-icon">3</span><span><b>For authors:</b> exportable HTML, print/PDF mode, copy-ready captions.</span></div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <section class="sec" id="guide">
+    <div class="sec-label">Quick guide</div>
+    <div class="sec-title">Read the work in four steps</div>
+    <div class="sec-sub">This section turns the technical pipeline into a simple reader journey.</div>
+    <div class="guide-grid">
+      <div class="guide-card"><div class="guide-num">1</div><h3>Problem</h3><p>Field potato images are imbalanced and standard augmentation ignores disease progression over time.</p></div>
+      <div class="guide-card"><div class="guide-num">2</div><h3>Idea</h3><p>Use Fisher–KPP reaction–diffusion to create ordered lesion progression masks offline.</p></div>
+      <div class="guide-card"><div class="guide-num">3</div><h3>Training</h3><p>Composite lesions onto healthy leaves and train ordinary classifiers with cross-entropy only.</p></div>
+      <div class="guide-card"><div class="guide-num">4</div><h3>Evidence</h3><p>A2s improves accuracy, calibration, transfer, and Grad-CAM localization under matched budgets.</p></div>
+    </div>
+  </section>
+
+  <section class="sec" id="claims">
+    <div class="sec-label">Research claims</div>
+    <div class="sec-title">What the paper claims — and what it does not claim</div>
+    <div class="claim-grid">
+      <div class="claim"><h3>✓ Best evaluated method</h3><p>A2s gives the highest metrics among tested baselines under the reported settings.</p></div>
+      <div class="claim"><h3>✓ Ordering helps</h3><p>A2s exceeds shuffled KPP A3, suggesting temporal ordering adds useful signal.</p></div>
+      <div class="claim"><h3>✓ Physics-inspired</h3><p>The PDE is solved offline; no PDE residual is placed inside the training loss.</p></div>
+      <div class="claim"><h3>⚠ Not photorealistic</h3><p>Alpha blending is structural, not a complete biological rendering of lesion evolution.</p></div>
+      <div class="claim"><h3>⚠ Not universal yet</h3><p>Transfer was evaluated one-way; multi-region external validation remains future work.</p></div>
+    </div>
+  </section>
+
+  <section class="sec" id="results">
+    <div class="section-head">
+      <div><div class="sec-label">Key results</div><div class="sec-title">A2s proposed method at a glance</div><div class="sec-sub">Each card includes the interpretation needed by a non-specialist reader.</div></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><span class="help tooltip" data-tip="Top-line PlantVillage performance for the primary ViT-B/16 classifier.">?</span><div class="kpi-label">ViT-B/16 accuracy</div><div class="kpi-val">97.5%</div><div class="kpi-delta pos">↑ +6.2 pp vs A0 baseline</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Confirms RD-Aug also benefits CNN backbones, not only transformers.">?</span><div class="kpi-label">ResNet-50 accuracy</div><div class="kpi-val">94.1%</div><div class="kpi-delta pos">↑ +6.7 pp vs A0 baseline</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Macro-AUC averages class-wise one-vs-rest discrimination.">?</span><div class="kpi-label">Macro-AUC</div><div class="kpi-val">0.96</div><div class="kpi-delta pos">↑ from 0.88 A0</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Macro-F1 is useful when class imbalance exists, because it weights classes equally.">?</span><div class="kpi-label">Macro-F1</div><div class="kpi-val">0.97</div><div class="kpi-delta pos">↑ from 0.84 A0</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Expected calibration error: lower means predicted confidence better matches accuracy.">?</span><div class="kpi-label">ECE ↓</div><div class="kpi-val">0.029</div><div class="kpi-delta neg">↓ from 0.081 A0</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Train on Field-IN only, evaluate on PlantVillage without fine-tuning.">?</span><div class="kpi-label">Transfer accuracy</div><div class="kpi-val">89.3%</div><div class="kpi-delta pos">↑ +13.0 pp vs A0</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="Grad-CAM IoU compares model attention regions against human lesion masks.">?</span><div class="kpi-label">Grad-CAM IoU</div><div class="kpi-val">0.58</div><div class="kpi-delta pos">↑ from 0.35 A0</div></div>
+      <div class="kpi"><span class="help tooltip" data-tip="A2s vs A3 tests whether temporal ordering matters when images and labels are preserved.">?</span><div class="kpi-label">Wilcoxon p</div><div class="kpi-val">0.002</div><div class="kpi-delta pos">W=1, r=0.79</div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="pipeline">
+    <div class="sec-label">Proposed model</div>
+    <div class="sec-title">RD-Aug pipeline overview</div>
+    <div class="sec-sub">Seven stages from real datasets to physics-structured synthetic augmentation, unchanged classifier training, and evaluation output.</div>
+    <div class="card">
+      <canvas id="blockDiag" height="520" aria-label="RD-Aug pipeline block diagram"></canvas>
+      <div class="method-steps">
+        <div class="step-chip"><b>1. Input</b>PV + Field-IN</div><div class="step-chip"><b>2. PDE</b>Fisher–KPP masks</div><div class="step-chip"><b>3. Composite</b>Alpha blending</div><div class="step-chip"><b>4. Variants</b>A0–A6, A2, A2s</div><div class="step-chip"><b>5. Train</b>CE + AdamW</div><div class="step-chip"><b>6. Evaluate</b>Metrics + tests</div><div class="step-chip"><b>7. Output</b>A2s best setting</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="ablation">
+    <div class="sec-label">Ablation study</div>
+    <div class="sec-title">Eight matched-budget augmentation conditions</div>
+    <div class="sec-sub">All augmented conditions use +1,800 samples. This makes the ablation evidence stronger than comparing RD-Aug only against real-only training.</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Interactive accuracy chart</div>
+        <div class="card-sub">Switch datasets and hover bars for values.</div>
+        <div class="tab-bar"><button class="tab-btn active" onclick="switchTab('abl','pv',this)">PlantVillage</button><button class="tab-btn" onclick="switchTab('abl','fi',this)">Field-IN</button></div>
+        <div id="abl-pv" class="tab-panel active"><div class="legend"><span><span class="lsq" style="background:#2563eb"></span>ViT-B/16</span><span><span class="lsq" style="background:#16a34a"></span>ResNet-50</span></div><div class="ch-wrap"><canvas id="cAblPV"></canvas></div></div>
+        <div id="abl-fi" class="tab-panel"><div class="legend"><span><span class="lsq" style="background:#2563eb"></span>ViT-B/16</span><span><span class="lsq" style="background:#16a34a"></span>ResNet-50</span></div><div class="ch-wrap"><canvas id="cAblFI"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Condition ranking · ViT-B/16 PlantVillage</div>
+        <div class="card-sub">Sorted by accuracy; A2s is highlighted.</div>
+        <div id="pbars"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="copy-row"><div><div class="card-title">Ablation condition table</div><div class="card-sub">Search by ID, strategy, or purpose.</div></div><button class="btn" onclick="copyAblationCaption()">Copy caption</button></div>
+      <div class="search-row"><input class="search" id="ablationSearch" placeholder="Search conditions, e.g., A2s, MixUp, shuffled..." oninput="filterAblationTable()"><span class="badge info">same +1,800 sample budget</span></div>
+      <div class="table-scroll"><table id="ablationTable" aria-label="Ablation condition summary"><thead><tr><th>ID</th><th>Strategy</th><th>Additional samples</th><th>Temporal ordering</th><th>Stochastic nucleation</th><th>Purpose</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Expected calibration error (ECE)</div><div class="card-sub">Lower is better · raw softmax · 15 bins · no temperature scaling.</div>
+      <div class="legend"><span><span class="lsq" style="background:#2563eb"></span>ViT-B/16</span><span><span class="lsq" style="background:#16a34a"></span>ResNet-50</span></div><div class="ch-wrap" style="height:250px"><canvas id="cECE"></canvas></div>
+    </div>
+  </section>
+
+  <section class="sec" id="pde">
+    <div class="sec-label">Physics simulator</div>
+    <div class="sec-title">Interactive Fisher–KPP lesion progression</div>
+    <div class="sec-sub">Adjust diffusion, growth, and number of nuclei. The simulator visualizes how lesion concentration spreads across frames.</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="eq-box">∂C/∂t = D·∇²C + r·C·(1 − C/K) &nbsp; | &nbsp; default: D=0.25, r=1.5, K=1.0, σ=8 px</div>
+        <div class="slider-row"><label>D — diffusion</label><input type="range" id="slD" min="0.05" max="0.50" step="0.05" value="0.25" oninput="updatePDE()"><span class="val" id="vD">0.25</span></div>
+        <div class="slider-row"><label>r — growth</label><input type="range" id="slR" min="0.50" max="3.00" step="0.10" value="1.50" oninput="updatePDE()"><span class="val" id="vR">1.5</span></div>
+        <div class="slider-row"><label>M — nuclei</label><input type="range" id="slM" min="1" max="5" step="1" value="3" oninput="updatePDE()"><span class="val" id="vM">3</span></div>
+        <div class="stat-mini"><div class="stat-item"><div class="stat-name">Wave speed v*</div><div class="stat-v" id="ws">1.22 px/t</div></div><div class="stat-item"><div class="stat-name">Radial advance</div><div class="stat-v" id="ra">4.29 px</div></div><div class="stat-item"><div class="stat-name">Time/frame</div><div class="stat-v" id="tf">3.50 t</div></div><div class="stat-item"><div class="stat-name">CFL</div><div class="stat-v" id="cfl" style="color:#16a34a">✓ OK</div></div></div>
+      </div>
+      <div class="card"><div class="card-title">What the sliders mean</div><p class="card-sub" style="margin-bottom:.6rem">Increasing <b>D</b> spreads lesions more broadly. Increasing <b>r</b> accelerates logistic growth. Increasing <b>M</b> creates multiple infection foci, matching stochastic nucleation in A2s.</p><div class="params-grid" style="grid-template-columns:1fr 1fr"><div class="param-cell"><div class="param-key">Stage rule</div><div class="param-val">C &lt; 0.3K → Early</div><div class="param-desc">Frames 1–2</div></div><div class="param-cell"><div class="param-key">Stage rule</div><div class="param-val">C ≥ 0.3K → Late</div><div class="param-desc">Frames 3–6</div></div></div></div>
+    </div>
+    <div class="card"><div class="card-title">Generated progression frames</div><div class="pde-frames" id="pdeFrames"></div></div>
+  </section>
+
+  <section class="sec" id="validation">
+    <div class="sec-label">Validation</div>
+    <div class="sec-title">Morphology, transfer, robustness, and localization</div>
+    <div class="sec-sub">This section makes the evidence easy to inspect without reading every table in the manuscript.</div>
+    <div class="tab-bar"><button class="tab-btn active" onclick="switchTab('val','morph',this)">Morphology</button><button class="tab-btn" onclick="switchTab('val','transfer',this)">Transfer</button><button class="tab-btn" onclick="switchTab('val','dataset',this)">Dataset</button></div>
+    <div id="val-morph" class="tab-panel active card">
+      <div class="card-title">Real vs synthetic lesion descriptors</div><div class="card-sub">Mann–Whitney U, two-sided. p &gt; 0.05 means no statistically significant distributional difference for the descriptor.</div>
+      <div class="table-scroll"><table id="morphTable"><thead><tr><th>Descriptor</th><th>Real mean ± std</th><th>Synthetic mean ± std</th><th>p-value</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div id="val-transfer" class="tab-panel card">
+      <div class="grid2"><div><div class="card-title">Field-IN → PlantVillage transfer</div><div class="table-scroll"><table id="transferTable"><thead><tr><th>Cond.</th><th>Description</th><th>Transfer acc.</th><th>Δ vs A0</th></tr></thead><tbody></tbody></table></div></div><div><div class="card-title">Transfer accuracy chart</div><div class="ch-wrap" style="height:260px"><canvas id="cTransfer"></canvas></div></div></div>
+    </div>
+    <div id="val-dataset" class="tab-panel card">
+      <div class="card-title">Class composition</div><div class="card-sub">Real PlantVillage + A2s synthetic additions.</div><div class="ch-wrap" style="height:260px"><canvas id="cDataset"></canvas></div>
+    </div>
+  </section>
+
+  <section class="sec" id="stats">
+    <div class="sec-label">Statistical significance</div><div class="sec-title">Observed result → evidence → interpretation</div><div class="sec-sub">Tests use 10-fold CV fold scores on PlantVillage ViT-B/16 accuracy.</div>
+    <div class="stat-boxes"><div class="stat-box"><div class="stat-box-label">A2s vs A3</div><div class="stat-box-val">W=1, p=0.002</div><div class="stat-box-note">Temporal ordering; r=0.79</div></div><div class="stat-box green"><div class="stat-box-label">Permutation</div><div class="stat-box-val">p=0.003</div><div class="stat-box-note">10,000 sign-flip permutations</div></div><div class="stat-box amber"><div class="stat-box-label">Bootstrap CI</div><div class="stat-box-val">[97.1, 97.9]%</div><div class="stat-box-note">A2s PlantVillage, 10,000 resamples</div></div></div>
+    <div class="grid2"><div class="card"><div class="card-title">Effect sizes</div><div class="ch-wrap" style="height:230px"><canvas id="cWilcoxon"></canvas></div></div><div class="card"><div class="card-title">Interpretation guardrails</div><p class="card-sub">The results support the utility of temporal ordering, but they do not prove that a curriculum mechanism is the only causal explanation. Batch-statistics effects, optimization trajectory effects, and implicit feature regularization remain possible.</p><ul style="margin-left:1.2rem;color:var(--muted);font-size:13px"><li>A2s vs A3 isolates ordering while preserving KPP image family.</li><li>A2s vs A6 compares physics-structured augmentation with RandAugment.</li><li>Holm-Bonferroni correction keeps the reported tests significant.</li></ul></div></div>
+  </section>
+
+  <section class="sec" id="params">
+    <div class="sec-label">Parameter sheet</div><div class="sec-title">Single-source method configuration</div>
+    <div class="params-grid" id="paramGrid"></div>
+  </section>
+
+  <section class="sec" id="snippets">
+    <div class="sec-label">Manuscript-ready snippets</div><div class="sec-title">Copy concise descriptions into the paper</div>
+    <div class="snippet"><div class="copy-row"><div class="card-title">Two-line ablation table reference</div><button class="btn" onclick="copyText('snippetAbl')">Copy</button></div><pre id="snippetAbl">Table X summarizes the eight matched-budget augmentation conditions used in the ablation study. The A2s–A3 comparison isolates the contribution of temporal ordering, while A2s–A2 evaluates the effect of stochastic nucleation diversity.</pre></div>
+    <div class="snippet"><div class="copy-row"><div class="card-title">Dashboard caption</div><button class="btn" onclick="copyText('snippetDash')">Copy</button></div><pre id="snippetDash">Interactive RD-Aug dashboard showing the proposed reaction–diffusion augmentation pipeline, Fisher–KPP lesion simulator, matched-budget ablation study, morphological validation, statistical tests, and cross-dataset transfer analysis.</pre></div>
+  </section>
+
+  <section class="sec" id="code">
+    <div class="sec-label">Source code excerpts</div><div class="sec-title">Reproducibility snippets</div><div class="sec-sub">Expandable code blocks keep the page readable while preserving implementation detail.</div>
+    <div class="code-toggle" onclick="toggleCode('c1',this)">rd_aug.py — Fisher–KPP PDE solver and lesion generator</div>
+    <pre class="code-block" id="c1"><span class="cm"># Core Fisher–KPP update</span>
+<span class="kw">def</span> <span class="fn">euler_step</span>(C, D=<span class="numc">0.25</span>, r=<span class="numc">1.5</span>, K=<span class="numc">1.0</span>, dt=<span class="numc">0.05</span>):
+    L = laplacian_reflect(C)  <span class="cm"># Neumann boundary condition</span>
+    dC = dt * (D * L + r * C * (<span class="numc">1.0</span> - C / K))
+    <span class="kw">return</span> np.clip(C + dC, <span class="numc">0.0</span>, K)
+
+<span class="kw">for</span> frame <span class="kw">in</span> range(T):
+    <span class="kw">for</span> step <span class="kw">in</span> range(Nsub):
+        C = euler_step(C, D, r, K, dt)
+    frames.append(normalize_to_uint8(C))</pre>
+    <div class="code-toggle" onclick="toggleCode('c2',this)">training_loop.py — ordered synthetic DataLoader</div>
+    <pre class="code-block" id="c2"><span class="cm"># A2/A2s preserve synthetic temporal order; A3 destroys it</span>
+real_loader  = DataLoader(real_dataset,  shuffle=<span class="kw">True</span>,  batch_size=<span class="numc">32</span>)
+synth_loader = DataLoader(synth_dataset, shuffle=<span class="kw">False</span>, batch_size=<span class="numc">32</span>)
+
+<span class="kw">for</span> (br, yr), (bs, ys) <span class="kw">in</span> zip(real_loader, synth_loader):
+    x = torch.cat([br, bs])
+    y = torch.cat([yr, ys])
+    loss = cross_entropy(model(x), y)
+    loss.backward(); optimizer.step()</pre>
+  </section>
+
+  <footer class="footer"><strong>RD-Aug</strong> · Interactive dashboard generated for manuscript review and presentation<br/>Physics-inspired · Architecture-agnostic · Augmentation-centric · No PDE loss terms</footer>
+</div>
+<button class="backtop" onclick="location.href='#top'" title="Back to top">↑</button>
+
+<script>
+/* Data */
+const LABELS=['A0','A1','A4','A5','A6','A3','A2','A2s'];
+const PROPOSED=7;
+const BLUE='#2563eb', GREEN='#16a34a', AMBER='#d97706', RED='#b91c1c', PURPLE='#7c3aed';
+const VIT_PV=[91.3,95.1,95.8,96.0,96.1,95.6,97.2,97.5];
+const RES_PV=[87.4,92.3,92.8,93.1,93.4,92.9,93.8,94.1];
+const VIT_FI=[80.1,86.5,87.0,87.4,87.8,87.5,90.1,90.4];
+const RES_FI=[76.4,82.1,82.6,83.0,83.5,83.2,84.1,84.6];
+const ECE_VIT=[0.081,0.054,0.049,0.047,0.045,0.046,0.031,0.029];
+const ECE_RES=[0.097,0.071,0.068,0.065,0.062,0.064,0.058,0.055];
+const alphaHex=a=>Math.round(a*255).toString(16).padStart(2,'0');
+const conds=[
+  ['A0','Real images only','0','No','No','Baseline without augmentation'],
+  ['A1','Standard augmentation: H/V flip, ±20% crop, colour jitter','1,800','No','No','Conventional image transformations'],
+  ['A4','MixUp, λ ~ Beta(0.4,0.4)','1,800','No','No','Feature-mixing baseline'],
+  ['A5','CutMix, λ ~ Beta(1.0,1.0)','1,800','No','No','Region-mixing baseline'],
+  ['A6','RandAugment, N=2, M=9','1,800','No','No','Strong policy-based augmentation'],
+  ['A3','KPP frames, synth_loader shuffle=True','1,800','No','Yes','Shuffled control; removes temporal ordering'],
+  ['A2','KPP frames, shuffle=False, fixed nucleation','1,800','Yes','No','Tests ordered progression without stochastic diversity'],
+  ['A2s','KPP frames, shuffle=False, stochastic nucleation','1,800','Yes','Yes','Proposed method: ordered progression + stochastic diversity']
+];
+const morph=[
+  ['Lesion area (% leaf)','12.4 ± 6.1','13.1 ± 5.8','0.310','Consistent','ok'],
+  ['Circularity','0.71 ± 0.12','0.68 ± 0.11','0.180','Partly constrained','warn'],
+  ['Eccentricity','0.58 ± 0.14','0.61 ± 0.13','0.220','Partly constrained','warn'],
+  ['Mean R channel','0.31 ± 0.08','0.28 ± 0.07','0.090','Consistent','ok'],
+  ['Mean G channel','0.18 ± 0.05','0.16 ± 0.06','0.110','Consistent','ok'],
+  ['LBP texture uniformity','0.42 ± 0.09','0.39 ± 0.08','0.140','Consistent','ok'],
+  ['Necrotic edge thickness','7.2 ± 2.1','8.1 ± 2.4','0.070','Consistent','ok'],
+  ['SSIM vs real mean','1.00 ref.','0.74 ± 0.08','—','Perceptual only','info'],
+  ['FID ResNet-50 avgpool','—','18.3','—','Perceptual only','info']
+];
+const transfer=[['A0','Real only','76.3%','—'],['A1','Standard augmentation','80.5%','+4.2'],['A6','RandAugment','82.1%','+5.8'],['A3','KPP shuffled','81.8%','+5.5'],['A2','KPP ordered deterministic','86.7%','+10.4'],['A2s','KPP ordered stochastic','89.3%','+13.0']];
+const params=[['Diffusion','D','0.25','Controls spatial spread'],['Growth rate','r','1.5','Intrinsic logistic growth'],['Carrying capacity','K','1.0','Maximum concentration'],['Nuclei','M','3','Infection foci'],['Inoculum width','σ','8 px','Gaussian seed width'],['Output frames','T','6','Progression snapshots'],['Sub-steps','Nsub','70','Euler steps/frame'],['Time step','Δt','0.05','CFL stable'],['Alpha blend','α','0.70','Lesion composite weight'],['Wave speed','v*','1.22 px/t','2√(Dr)'],['Stage threshold','τ','0.30 K','Early/late boundary'],['Synthetic/class','Ns','600','1,800 total']];
+
+/* Utilities */
+function switchTab(group,panel,btn){btn.parentElement.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll(`[id^="${group}-"]`).forEach(p=>p.classList.remove('active'));document.getElementById(`${group}-${panel}`).classList.add('active');}
+function toggleCode(id,el){const block=document.getElementById(id);const isOpen=block.classList.toggle('show');el.classList.toggle('open',isOpen);}
+function copyText(id){navigator.clipboard.writeText(document.getElementById(id).innerText);toast('Copied to clipboard');}
+function toast(msg){const t=document.createElement('div');t.textContent=msg;t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#111827;color:white;padding:.65rem 1rem;border-radius:999px;z-index:999;font-size:13px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25)';document.body.appendChild(t);setTimeout(()=>t.remove(),1700);}
+function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme');document.documentElement.setAttribute('data-theme',cur==='dark'?'light':'dark');localStorage.setItem('rd-theme',document.documentElement.getAttribute('data-theme'));}
+function downloadDashboard(){const blob=new Blob([document.documentElement.outerHTML],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='RD_Aug_dashboard_enhanced.html';a.click();URL.revokeObjectURL(url);}
+function copyAblationCaption(){navigator.clipboard.writeText('Table X summarizes the eight matched-budget augmentation conditions used in the ablation study. The A2s–A3 comparison isolates the contribution of temporal ordering, while A2s–A2 evaluates the effect of stochastic nucleation diversity.');toast('Ablation caption copied');}
+
+/* Tables */
+function renderAblationTable(filter=''){
+  const tb=document.querySelector('#ablationTable tbody');tb.innerHTML='';
+  conds.filter(r=>r.join(' ').toLowerCase().includes(filter.toLowerCase())).forEach(r=>{
+    const prop=r[0]==='A2s';tb.innerHTML+=`<tr style="${prop?'background:var(--green-l);font-weight:800':''}"><td><span class="cond-badge ${prop?'prop':''}">${r[0]}</span></td><td>${r[1]}</td><td class="num">${r[2]}</td><td><span class="badge ${r[3]==='Yes'?'ok':'no'}">${r[3]}</span></td><td><span class="badge ${r[4]==='Yes'?'ok':'no'}">${r[4]}</span></td><td>${r[5]}</td></tr>`;
+  });
+}
+function filterAblationTable(){renderAblationTable(document.getElementById('ablationSearch').value);}
+function renderOtherTables(){
+  document.querySelector('#morphTable tbody').innerHTML=morph.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td class="mono">${r[2]}</td><td class="num">${r[3]}</td><td><span class="badge ${r[5]}">${r[4]}</span></td></tr>`).join('');
+  document.querySelector('#transferTable tbody').innerHTML=transfer.map(r=>{const prop=r[0]==='A2s';return `<tr style="${prop?'background:var(--green-l);font-weight:800':''}"><td><span class="cond-badge ${prop?'prop':''}">${r[0]}</span></td><td>${r[1]}</td><td class="num">${r[2]}</td><td class="num pos">${r[3]}</td></tr>`}).join('');
+  document.getElementById('paramGrid').innerHTML=params.map(p=>`<div class="param-cell"><div class="param-key">${p[0]}</div><div class="param-sym">${p[1]}</div><div class="param-val">${p[2]}</div><div class="param-desc">${p[3]}</div></div>`).join('');
+}
+
+/* Block diagram */
+function drawBlockDiagram(){
+  const cvs=document.getElementById('blockDiag'); if(!cvs) return; const W=cvs.offsetWidth||900,H=520,DPR=window.devicePixelRatio||1;cvs.width=W*DPR;cvs.height=H*DPR;cvs.style.height=H+'px';const ctx=cvs.getContext('2d');ctx.scale(DPR,DPR);const sx=W/900;ctx.clearRect(0,0,W,H);
+  function rr(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x*sx,y,w*sx,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.4;ctx.stroke()}}
+  function text(t,x,y,sz,wt,col,al='center'){ctx.font=`${wt||'normal'} ${sz}px Segoe UI, sans-serif`;ctx.fillStyle=col||'#111';ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillText(t,x*sx,y)}
+  function arrow(x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1*sx,y1);ctx.lineTo(x2*sx,y2);ctx.strokeStyle='#333';ctx.lineWidth=1.7;ctx.stroke();const ang=Math.atan2(y2-y1,(x2-x1)*sx);ctx.beginPath();ctx.moveTo(x2*sx,y2);ctx.lineTo(x2*sx-10*Math.cos(ang-.4),y2-10*Math.sin(ang-.4));ctx.lineTo(x2*sx-10*Math.cos(ang+.4),y2-10*Math.sin(ang+.4));ctx.closePath();ctx.fillStyle='#333';ctx.fill()}
+  function leaf(cx,cy,sc,lesions){ctx.save();ctx.translate(cx*sx,cy);ctx.rotate(-.1);ctx.beginPath();ctx.ellipse(0,0,24*sc,15*sc,0,0,Math.PI*2);ctx.fillStyle='#7fbf5b';ctx.fill();ctx.strokeStyle='#3b7a2a';ctx.stroke();ctx.beginPath();ctx.moveTo(-18*sc,2*sc);ctx.lineTo(18*sc,-2*sc);ctx.stroke();if(lesions){[[-6,2,4],[5,-1,4],[12,4,3]].forEach(d=>{ctx.beginPath();ctx.arc(d[0]*sc,d[1]*sc,d[2]*sc,0,Math.PI*2);ctx.fillStyle='#a94d37';ctx.fill()})}ctx.restore()}
+  text('RD-Aug: End-to-End Proposed Model Pipeline',450,24,17,'800',getComputedStyle(document.documentElement).getPropertyValue('--text'));
+  const blocks=[['1 Input','#1565c0','#e3f2fd'],['2 Fisher–KPP PDE','#2e7d32','#e8f5e9'],['3 Synthetic construction','#e65100','#fff3e0'],['4 Augmentation variants','#4527a0','#ede7f6'],['5 Training','#b71c1c','#ffebee'],['6 Evaluation','#00695c','#e0f2f1'],['7 Output','#2e7d32','#e8f5e9']];
+  const x=[15,142,269,396,523,650,777], y=58, w=108, h=230;
+  blocks.forEach((b,i)=>{rr(x[i],y,w,h,12,b[2],b[1]);ctx.fillStyle=b[1];ctx.globalAlpha=.16;ctx.fillRect(x[i]*sx,y,w*sx,30);ctx.globalAlpha=1;text(b[0],x[i]+w/2,y+15,10,'900',b[1])});
+  for(let i=0;i<6;i++)arrow(x[i]+w+4,y+h/2,x[i+1]-4,y+h/2);
+  leaf(48,130,.8,false);text('PlantVillage',69,112,8,'700','#1565c0');text('2,152 imgs',69,126,8,'normal','#666');leaf(48,180,.8,true);text('Field-IN',69,162,8,'700','#1565c0');text('1,200 imgs',69,176,8,'normal','#666');text('3 classes',69,224,8,'700','#e65100');text('imbalance',69,240,8,'normal','#777');
+  text('∂C/∂t = D∇²C',196,112,10,'normal','#111');text('+ rC(1−C/K)',196,129,10,'normal','#111');text('D=.25 r=1.5',196,158,8,'700','#2e7d32');[0,1,2,3].forEach((k,i)=>{ctx.fillStyle=`hsl(${220-k*40},70%,${62-k*6}%)`;ctx.fillRect((154+i*22)*sx,190,16*sx,16);text('t'+k,162+i*22,216,7,'normal','#555')});text('ordered masks',196,248,8,'700','#555');
+  leaf(300,132,.7,false);text('+',323,132,16,'900','#777');ctx.fillStyle='#111';ctx.fillRect(337*sx,115,28*sx,28);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(351*sx,129,8*sx,0,Math.PI*2);ctx.fill();text('alpha blend',323,170,8,'700','#e65100');[0,1,2].forEach((k,i)=>leaf(290+i*26,210,.55,k>0));text('synthetic sequence',323,250,8,'700','#555');
+  const vts=['A0 real','A1 std','A4 MixUp','A5 CutMix','A6 Rand','A3 shuffle','A2 order','A2s prop'];vts.forEach((v,i)=>text(v,450,98+i*19,8,i===7?'900':'normal',i===7?'#2e7d32':'#333'));
+  text('ViT-B/16',577,112,9,'800','#b71c1c');text('ResNet-50',577,130,9,'800','#b71c1c');[[0,3],[1,4],[2,3]].forEach((l,li)=>{for(let n=0;n<l[1];n++){ctx.beginPath();ctx.arc((542+li*22)*sx,178+n*20-(l[1]-1)*10,6*sx,0,Math.PI*2);ctx.fillStyle=li===0?'#93c5fd':li===1?'#c4b5fd':'#86efac';ctx.fill();ctx.strokeStyle='#666';ctx.stroke()}});text('CE + AdamW',577,245,8,'700','#555');
+  ['Accuracy','AUC','Macro-F1','ECE','Wilcoxon','Transfer'].forEach((m,i)=>{ctx.fillStyle='#00695c';ctx.fillRect(664*sx,102+i*24,4,13);text(m,708,109+i*24,8,'700','#333','left')});
+  [0,1,2,3].forEach((k,i)=>leaf(806+i*20,138,.55,k>0));text('97.5% accuracy',831,195,9,'900','#2e7d32');text('0.029 ECE',831,216,9,'900','#2e7d32');text('89.3% transfer',831,237,9,'900','#2e7d32');
+  // Bottom note, no crossed lines
+  rr(180,350,540,110,12,'rgba(46,125,50,.06)','#2e7d32');text('Why RD-Aug is different',450,375,12,'900','#2e7d32');text('The physical prior changes the data distribution, not the classifier architecture or loss function.',450,402,11,'normal',getComputedStyle(document.documentElement).getPropertyValue('--text'));text('A2s = ordered Fisher–KPP progression + stochastic nucleation diversity under matched sample budgets.',450,428,11,'normal',getComputedStyle(document.documentElement).getPropertyValue('--text'));
+}
+
+/* Charts */
+function mkAblChart(id,vitD,resD,yMin,yMax){return new Chart(document.getElementById(id),{type:'bar',data:{labels:LABELS,datasets:[{label:'ViT-B/16',data:vitD,backgroundColor:LABELS.map((_,i)=>i===PROPOSED?BLUE:BLUE+alphaHex(.35)),borderRadius:5},{label:'ResNet-50',data:resD,backgroundColor:LABELS.map((_,i)=>i===PROPOSED?GREEN:GREEN+alphaHex(.35)),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(1)+'%'}}},scales:{x:{grid:{display:false}},y:{min:yMin,max:yMax,ticks:{callback:v=>v+'%'},grid:{color:getComputedStyle(document.documentElement).getPropertyValue('--border')}}}}})}
+function makeCharts(){
+  mkAblChart('cAblPV',VIT_PV,RES_PV,83,100); mkAblChart('cAblFI',VIT_FI,RES_FI,72,93);
+  new Chart(document.getElementById('cECE'),{type:'bar',data:{labels:LABELS,datasets:[{label:'ViT-B/16',data:ECE_VIT,backgroundColor:LABELS.map((_,i)=>i===PROPOSED?BLUE:BLUE+alphaHex(.35)),borderRadius:5},{label:'ResNet-50',data:ECE_RES,backgroundColor:LABELS.map((_,i)=>i===PROPOSED?GREEN:GREEN+alphaHex(.35)),borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:0,max:.12,ticks:{callback:v=>v.toFixed(3)},title:{display:true,text:'ECE (lower = better)'}}}}});
+  new Chart(document.getElementById('cWilcoxon'),{type:'bar',data:{labels:['A2s vs A3','A2s vs A6','A0 vs A2s'],datasets:[{label:'Effect size r',data:[.79,.89,.89],backgroundColor:[BLUE,GREEN,AMBER],borderRadius:5}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:0,max:1,title:{display:true,text:'Effect size r = Z/√n'}}}}});
+  new Chart(document.getElementById('cTransfer'),{type:'bar',data:{labels:['A0','A1','A6','A3','A2','A2s'],datasets:[{data:[76.3,80.5,82.1,81.8,86.7,89.3],backgroundColor:['#16a34a66','#16a34a66','#16a34a66','#16a34a66','#16a34a88',GREEN],borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:70,max:92,ticks:{callback:v=>v+'%'}}}}});
+  new Chart(document.getElementById('cDataset'),{type:'bar',data:{labels:['Healthy','Early blight','Late blight'],datasets:[{label:'Real',data:[152,1000,1000],backgroundColor:['#16a34a','#d97706','#b91c1c'],borderRadius:5},{label:'Synthetic A2s',data:[0,600,600],backgroundColor:['transparent',BLUE+alphaHex(.45),BLUE+alphaHex(.45)],borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Image count'}}}}});
+}
+
+/* Progress bars */
+function renderPbars(){const sorted=VIT_PV.map((v,i)=>({label:LABELS[i],val:v})).sort((a,b)=>a.val-b.val);document.getElementById('pbars').innerHTML=sorted.map(({label,val})=>{const pct=((val-84)/(100-84)*100).toFixed(1),p=label==='A2s';return `<div class="pbar-wrap"><div class="pbar-label"><span class="name">${label}${p?' ◀ proposed':''}</span><span class="num">${val.toFixed(1)}%</span></div><div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:${p?GREEN:BLUE}"></div></div></div>`}).join('')}
+
+/* PDE simulator */
+const SZ=64,NSUB=8,DT=0.05;
+function buildFrames(){const wrap=document.getElementById('pdeFrames');wrap.innerHTML='';for(let k=0;k<=6;k++){const col=document.createElement('div');col.className='pde-frame';const c=document.createElement('canvas');c.width=SZ;c.height=SZ;c.id='pde'+k;const lbl=document.createElement('div');lbl.className='pde-frame-label';lbl.textContent=k===0?'t=0 init':k<=1?'early':'late';col.appendChild(c);col.appendChild(lbl);wrap.appendChild(col)}}
+function lcg(s){let x=s^(s<<13);x^=x>>7;x^=x<<17;return(x>>>0)/4294967296}
+function runPDE(D,r,M){const K=1;let C=new Float32Array(SZ*SZ),seed=42;for(let m=0;m<M;m++){seed+=1;const cy=Math.floor(lcg(seed)*SZ*.6+SZ*.2);seed+=3;const cx=Math.floor(lcg(seed)*SZ*.6+SZ*.2);seed+=7;const A=.6+lcg(seed)*.4;for(let i=0;i<SZ;i++)for(let j=0;j<SZ;j++){const d2=(i-cy)**2+(j-cx)**2;C[i*SZ+j]+=A*Math.exp(-d2/(2*64))}}for(let i=0;i<C.length;i++)C[i]=Math.min(C[i],K);const frames=[C.slice()];for(let t=0;t<6;t++){for(let s=0;s<NSUB;s++){const N=new Float32Array(SZ*SZ);for(let i=0;i<SZ;i++)for(let j=0;j<SZ;j++){const u=C[i*SZ+j],top=i>0?C[(i-1)*SZ+j]:C[(i+1)*SZ+j],bot=i<SZ-1?C[(i+1)*SZ+j]:C[(i-1)*SZ+j],lef=j>0?C[i*SZ+j-1]:C[i*SZ+j+1],rig=j<SZ-1?C[i*SZ+j+1]:C[i*SZ+j-1],lap=top+bot+lef+rig-4*u;N[i*SZ+j]=Math.max(0,Math.min(K,u+DT*(D*lap+r*u*(1-u/K))))}C=N}frames.push(C.slice())}return frames}
+function drawPDEFrame(canvas,field){const ctx=canvas.getContext('2d'),img=ctx.createImageData(SZ,SZ);let mx=0;for(const v of field)if(v>mx)mx=v;for(let i=0;i<SZ*SZ;i++){const v=mx>1e-9?field[i]/mx:0;img.data[i*4]=Math.round(v*145+60*(1-v));img.data[i*4+1]=Math.round(v*72+150*(1-v));img.data[i*4+2]=Math.round(v*20+70*(1-v));img.data[i*4+3]=255}ctx.putImageData(img,0,0)}
+function updatePDE(){const D=parseFloat(document.getElementById('slD').value),r=parseFloat(document.getElementById('slR').value),M=parseInt(document.getElementById('slM').value);document.getElementById('vD').textContent=D.toFixed(2);document.getElementById('vR').textContent=r.toFixed(1);document.getElementById('vM').textContent=M;const ws=2*Math.sqrt(D*r),tpf=NSUB*DT,ra=ws*tpf;document.getElementById('ws').textContent=ws.toFixed(2)+' px/t';document.getElementById('ra').textContent=ra.toFixed(2)+' px';document.getElementById('tf').textContent=tpf.toFixed(2)+' t';const cfl=document.getElementById('cfl'),ok=DT<=1/(4*D);cfl.textContent=ok?'✓ OK':'✗ Violates';cfl.style.color=ok?'#16a34a':'#b91c1c';runPDE(D,r,M).forEach((f,k)=>drawPDEFrame(document.getElementById('pde'+k),f))}
+
+/* Scroll */
+window.addEventListener('scroll',()=>{const h=document.documentElement;const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100;document.getElementById('scrollProgress').style.width=p+'%';const ids=['guide','results','pipeline','ablation','pde','validation','stats','code'];let active='';ids.forEach(id=>{const el=document.getElementById(id);if(el && el.getBoundingClientRect().top<120)active=id});document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+active))});
+window.addEventListener('resize',drawBlockDiagram);
+
+/* Init */
+document.addEventListener('DOMContentLoaded',()=>{document.documentElement.setAttribute('data-theme',localStorage.getItem('rd-theme')||'light');renderAblationTable();renderOtherTables();renderPbars();buildFrames();drawBlockDiagram();makeCharts();setTimeout(updatePDE,200)});
+</script>
+</body>
+</html>
